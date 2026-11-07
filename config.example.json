@@ -1,0 +1,10 @@
+{
+  "guest_wifi": {
+    "ssid": "YOUR_GUEST_NETWORK",
+    "password": "SET_THIS_ON_THE_PI",
+    "security": "WPA"
+  },
+  "refresh_seconds": 60,
+  "pihole_service": "pihole-FTL",
+  "unbound_service": "unbound"
+}

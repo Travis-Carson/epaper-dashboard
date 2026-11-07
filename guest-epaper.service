@@ -1,0 +1,16 @@
+[Unit]
+Description=Pi-hole and guest Wi-Fi e-paper dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/opt/guest-epaper
+Environment=WAVESHARE_EPAPER_LIB=/home/pi/e-Paper/RaspberryPi_JetsonNano/python/lib
+ExecStart=/opt/guest-epaper/.venv/bin/python /opt/guest-epaper/dashboard.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
