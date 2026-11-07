@@ -315,6 +315,7 @@ Type=simple
 User={service_user}
 WorkingDirectory={install_dir}
 Environment=WAVESHARE_EPAPER_LIB={driver_lib}
+Environment=GPIOZERO_PIN_FACTORY=lgpio
 ExecStart={venv_python} {installed_script} --config {config_path}
 Restart=on-failure
 RestartSec=10
