@@ -152,19 +152,38 @@ def make_dashboard(config):
 
 
 def load_display_driver():
-    library_path = Path(
-        os.environ.get(
-            "WAVESHARE_EPAPER_LIB",
-            str(Path.home() / "e-Paper/RaspberryPi_JetsonNano/python/lib"),
-        )
+    library_paths = []
+    configured_path = os.environ.get("WAVESHARE_EPAPER_LIB")
+    if configured_path:
+        library_paths.append(Path(configured_path))
+
+    library_paths.append(Path.home() / "e-Paper/RaspberryPi_JetsonNano/python/lib")
+    sudo_user = os.environ.get("SUDO_USER")
+    if sudo_user:
+        try:
+            import pwd
+
+            library_paths.append(
+                Path(pwd.getpwnam(sudo_user).pw_dir)
+                / "e-Paper/RaspberryPi_JetsonNano/python/lib"
+            )
+        except (ImportError, KeyError):
+            pass
+    library_paths.append(
+        Path("/opt/guest-epaper/waveshare-e-Paper/RaspberryPi_JetsonNano/python/lib")
     )
-    sys.path.insert(0, str(library_path))
+
+    for library_path in dict.fromkeys(library_paths):
+        if (library_path / "waveshare_epd").is_dir():
+            sys.path.insert(0, str(library_path))
+            break
     try:
         from waveshare_epd import epd2in13_V4
     except ImportError as error:
         raise RuntimeError(
-            "Cannot import epd2in13_V4. Set WAVESHARE_EPAPER_LIB to the Waveshare "
-            "Python lib directory."
+            "Cannot import epd2in13_V4. Searched: "
+            + ", ".join(str(path) for path in library_paths)
+            + ". Set WAVESHARE_EPAPER_LIB to the Waveshare Python lib directory."
         ) from error
     return epd2in13_V4.EPD()
 
