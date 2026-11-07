@@ -111,33 +111,98 @@ def load_font(size, bold=False):
         return ImageFont.load_default()
 
 
-def make_dashboard(config):
+def draw_homunculus(draw, mood, animation_frame):
+    draw.polygon([(10, 81), (52, 81), (65, 119), (2, 119)], fill=0)
+    draw.polygon([(19, 88), (43, 88), (50, 116), (14, 116)], fill=1)
+    draw.line((31, 91, 31, 116), fill=0, width=1)
+
+    draw.ellipse((8, 46, 59, 91), fill=1, outline=0, width=2)
+    draw.ellipse((12, 39, 33, 63), fill=1, outline=0, width=2)
+    draw.ellipse((35, 39, 56, 63), fill=1, outline=0, width=2)
+
+    draw.polygon([(5, 45), (34, 20), (63, 45)], fill=0)
+    draw.ellipse((4, 41, 64, 50), fill=0)
+    draw.polygon([(34, 31), (37, 36), (42, 37), (38, 40), (39, 45), (34, 42), (29, 45), (30, 40), (26, 37), (31, 36)], fill=1)
+
+    pupil_shift = animation_frame % 2
+    draw.ellipse((20 + pupil_shift, 49 + pupil_shift, 26 + pupil_shift, 56 + pupil_shift), fill=0)
+    draw.ellipse((43 + pupil_shift, 49 + pupil_shift, 49 + pupil_shift, 56 + pupil_shift), fill=0)
+
+    if mood == "CHEERFUL":
+        draw.arc((22, 64, 46, 81), 0, 180, fill=0, width=2)
+    elif mood == "WORRIED":
+        draw.line((19, 47, 29, 50), fill=0, width=2)
+        draw.line((39, 50, 50, 47), fill=0, width=2)
+        draw.arc((23, 69, 45, 83), 180, 360, fill=0, width=2)
+    else:
+        draw.ellipse((28, 66, 39, 79), fill=0)
+
+    wand_tip = (61, 58) if animation_frame % 2 else (59, 69)
+    draw.ellipse((47, 86, 55, 94), fill=1, outline=0, width=1)
+    draw.line((51, 89, wand_tip[0], wand_tip[1]), fill=0, width=2)
+    draw.ellipse((wand_tip[0] - 2, wand_tip[1] - 2, wand_tip[0] + 2, wand_tip[1] + 2), fill=0)
+    if animation_frame % 2 == 0:
+        sparkle_x, sparkle_y = 63, 56
+        draw.polygon(
+            [
+                (sparkle_x, sparkle_y - 6),
+                (sparkle_x + 2, sparkle_y - 2),
+                (sparkle_x + 6, sparkle_y),
+                (sparkle_x + 2, sparkle_y + 2),
+                (sparkle_x, sparkle_y + 6),
+                (sparkle_x - 2, sparkle_y + 2),
+                (sparkle_x - 6, sparkle_y),
+                (sparkle_x - 2, sparkle_y - 2),
+            ],
+            fill=0,
+        )
+
+
+def make_dashboard(config, animation_frame=0):
     from PIL import Image, ImageDraw, ImageFont
     import qrcode
 
     image = Image.new("1", (WIDTH, HEIGHT), 255)
     draw = ImageDraw.Draw(image)
-    title_font = load_font(11, bold=True)
-    body_font = load_font(10)
-    small_font = load_font(8)
-
-    draw.text((5, 3), "NETWORK STATUS", font=title_font, fill=0)
-    draw.line((5, 19, WIDTH - 5, 19), fill=0, width=1)
+    title_font = load_font(10, bold=True)
+    body_font = load_font(8, bold=True)
+    small_font = load_font(7)
 
     ip_address = network_details()
-    states = [
-        ("LAN", ip_address or "OFFLINE"),
-        ("WAN", "UP" if internet_reachable() else "DOWN"),
-        ("PI-HOLE", "UP" if service_active(config.get("pihole_service", "pihole-FTL")) else "DOWN"),
-        ("UNBOUND", "UP" if service_active(config.get("unbound_service", "unbound")) else "DOWN"),
-        ("DNS", "OK" if dns_resolves() else "FAIL"),
-    ]
-    y = 26
-    for label, value in states:
-        draw.text((5, y), f"{label:<8} {value}", font=body_font, fill=0)
-        y += 15
+    wan_up = internet_reachable()
+    pihole_up = service_active(config.get("pihole_service", "pihole-FTL"))
+    unbound_up = service_active(config.get("unbound_service", "unbound"))
+    dns_up = dns_resolves()
 
-    draw.text((164, 23), "GUEST WI-FI", font=small_font, fill=0)
+    if not ip_address or not wan_up:
+        mood = "ALERT"
+    elif not (pihole_up and unbound_up and dns_up):
+        mood = "WORRIED"
+    else:
+        mood = "CHEERFUL"
+
+    draw.text((5, 3), "HOMONCULUS", font=title_font, fill=0)
+    mood_width = draw.textbbox((0, 0), mood, font=small_font)[2]
+    draw.text((247 - mood_width, 5), mood, font=small_font, fill=0)
+    draw.line((4, 17, WIDTH - 4, 17), fill=0, width=1)
+
+    draw_homunculus(draw, mood, animation_frame)
+
+    draw.text((70, 27), f"IP {ip_address or 'unavailable'}", font=small_font, fill=0)
+    statuses = [
+        ("LAN", "UP" if ip_address else "DOWN"),
+        ("WAN", "UP" if wan_up else "DOWN"),
+        ("PI-HOLE", "UP" if pihole_up else "DOWN"),
+        ("UNBOUND", "UP" if unbound_up else "DOWN"),
+        ("DNS", "OK" if dns_up else "FAIL"),
+    ]
+    for row, (label, value) in enumerate(statuses):
+        y = 42 + row * 13
+        draw.text((70, y), label, font=small_font, fill=0)
+        value_width = draw.textbbox((0, 0), value, font=body_font)[2]
+        draw.text((155 - value_width, y), value, font=body_font, fill=0)
+
+    draw.text((177, 19), "GUEST WI-FI", font=small_font, fill=0)
     qr = qrcode.QRCode(
         error_correction=qrcode.constants.ERROR_CORRECT_M,
         box_size=3,
@@ -146,10 +211,10 @@ def make_dashboard(config):
     qr.add_data(wifi_qr_data(config["guest_wifi"]))
     qr.make(fit=True)
     qr_image = qr.make_image(fill_color="black", back_color="white").convert("1")
-    qr_image.thumbnail((96, 91), Image.Resampling.NEAREST)
-    image.paste(qr_image, (149 + (96 - qr_image.width) // 2, 30))
+    qr_image.thumbnail((88, 90), Image.Resampling.NEAREST)
+    image.paste(qr_image, (158 + (88 - qr_image.width) // 2, 29))
 
-    draw.text((5, 106), datetime.now().strftime("Updated %H:%M"), font=small_font, fill=0)
+    draw.text((70, 111), datetime.now().strftime("Updated %H:%M"), font=small_font, fill=0)
     return image
 
 
@@ -193,14 +258,16 @@ def load_display_driver():
 def display_loop(config, once=False):
     epd = load_display_driver()
     interval = max(30, int(config.get("refresh_seconds", 60)))
+    animation_frame = 0
     try:
         epd.init()
         while True:
-            image = make_dashboard(config)
+            image = make_dashboard(config, animation_frame)
             epd.display(epd.getbuffer(image))
             LOG.info("Display refreshed")
             if once:
                 break
+            animation_frame += 1
             time.sleep(interval)
     finally:
         epd.sleep()
