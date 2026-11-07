@@ -101,6 +101,8 @@ def wifi_qr_data(wifi):
 
 
 def load_font(size, bold=False):
+    from PIL import ImageFont
+
     font_name = "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf"
     font_path = Path("/usr/share/fonts/truetype/dejavu") / font_name
     try:
