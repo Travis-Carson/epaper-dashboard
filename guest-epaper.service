@@ -6,8 +6,10 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=pi
-WorkingDirectory=/opt/guest-epaper
+StateDirectory=guest-epaper
+WorkingDirectory=/var/lib/guest-epaper
 Environment=WAVESHARE_EPAPER_LIB=/home/pi/e-Paper/RaspberryPi_JetsonNano/python/lib
+Environment=GPIOZERO_PIN_FACTORY=lgpio
 ExecStart=/opt/guest-epaper/.venv/bin/python /opt/guest-epaper/dashboard.py
 Restart=on-failure
 RestartSec=10
